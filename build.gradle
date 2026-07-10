@@ -1,0 +1,24 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.chargedserver'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:26.1.2.build.+'
+    compileOnly 'io.netty:netty-all:4.1.97.Final'
+    compileOnly 'org.projectlombok:lombok:1.18.34'
+    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}

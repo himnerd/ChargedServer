@@ -1,0 +1,33 @@
+name: ChargedServer
+version: 1.0.0
+main: com.chargedserver.ChargedServerPlugin
+api-version: '26.1'
+description: Advanced plugin manager, optimization framework, protocol layer and cross-platform account linking.
+commands:
+  charged:
+    description: ChargedServer main command
+    usage: /charged <manage|updateall|link|darkmode|status>
+    aliases: [cs, chargedserver]
+permissions:
+  chargedserver.admin:
+    description: Grants access to all ChargedServer features
+    default: op
+    children:
+      chargedserver.command.manage: true
+      chargedserver.command.updateall: true
+      chargedserver.command.link: true
+      chargedserver.command.darkmode: true
+      chargedserver.command.status: true
+      chargedserver.gui: true
+  chargedserver.command.manage:
+    default: op
+  chargedserver.command.updateall:
+    default: op
+  chargedserver.command.link:
+    default: op
+  chargedserver.command.darkmode:
+    default: true
+  chargedserver.command.status:
+    default: op
+  chargedserver.gui:
+    default: op

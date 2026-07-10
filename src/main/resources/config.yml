@@ -1,0 +1,30 @@
+storage:
+  mysql:
+    enabled: false
+    host: localhost
+    port: 3306
+    database: charged
+    username: root
+    password: ""
+
+plugin-manager:
+  # Seconds between automatic background scans of the plugins folder
+  scan-interval-seconds: 300
+  # Query the Modrinth API for update checks (matched against the running server version)
+  modrinth-check: true
+
+protocol:
+  # Master switch for the Netty packet interception layer
+  enabled: true
+  throttle:
+    enabled: true
+    # Max entity move/rotate packets forwarded per player per 50ms window
+    max-move-packets-per-tick: 20
+
+optimization:
+  entity-culling:
+    enabled: true
+    # Mobs farther than this from every player stop ticking their AI
+    range: 48
+    # How often (in ticks) the culler re-evaluates entities
+    interval-ticks: 100
