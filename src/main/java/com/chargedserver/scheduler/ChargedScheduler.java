@@ -23,9 +23,11 @@ public class ChargedScheduler {
     private final ScheduledThreadPoolExecutor asyncPool;
     private final ConcurrentLinkedQueue<Runnable> mainThreadQueue = new ConcurrentLinkedQueue<>();
 
-    public ChargedScheduler(Plugin plugin) {
+    private final int shutdownTimeoutSeconds;
+
+    public ChargedScheduler(Plugin plugin, int threads, int shutdownTimeoutSeconds) {
         this.plugin = plugin;
-        int threads = Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
+        this.shutdownTimeoutSeconds = shutdownTimeoutSeconds;
         this.asyncPool = new ScheduledThreadPoolExecutor(threads, runnable -> {
             Thread thread = new Thread(runnable, "Charged-Worker");
             thread.setDaemon(true);
@@ -85,7 +87,7 @@ public class ChargedScheduler {
     public void shutdown() {
         asyncPool.shutdown();
         try {
-            asyncPool.awaitTermination(3, TimeUnit.SECONDS);
+            asyncPool.awaitTermination(shutdownTimeoutSeconds, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

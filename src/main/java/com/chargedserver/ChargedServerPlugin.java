@@ -3,6 +3,7 @@ package com.chargedserver;
 import com.chargedserver.account.ChargedLinkManager;
 import com.chargedserver.account.LinkManager;
 import com.chargedserver.api.ChargedAPI;
+import com.chargedserver.backup.BackupManager;
 import com.chargedserver.command.ChargedCommand;
 import com.chargedserver.database.DatabaseManager;
 import com.chargedserver.event.ChargedEventBus;
@@ -22,7 +23,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
+import org.bukkit.configuration.file.YamlConfiguration;
 
 public final class ChargedServerPlugin extends JavaPlugin {
 
@@ -35,6 +39,7 @@ public final class ChargedServerPlugin extends JavaPlugin {
     @Getter private GUIManager guiManager;
     @Getter private PluginScanner pluginScanner;
     @Getter private UpdateManager updateManager;
+    @Getter private BackupManager backupManager;
     @Getter private PacketInjector packetInjector;
     @Getter private PacketThrottler packetThrottler;
     @Getter private EntityCuller entityCuller;
@@ -45,9 +50,13 @@ public final class ChargedServerPlugin extends JavaPlugin {
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
+        mergeDefaults();
 
         // Core infrastructure first: everything else schedules through these.
-        chargedScheduler = new ChargedScheduler(this);
+        int asyncThreads = getConfig().getInt("scheduler.async-threads", 0);
+        if (asyncThreads <= 0) asyncThreads = Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
+        int shutdownTimeout = getConfig().getInt("scheduler.shutdown-timeout-seconds", 3);
+        chargedScheduler = new ChargedScheduler(this, asyncThreads, shutdownTimeout);
         eventBus = new ChargedEventBus();
 
         databaseManager = new DatabaseManager(this);
@@ -59,6 +68,9 @@ public final class ChargedServerPlugin extends JavaPlugin {
 
         pluginScanner = new PluginScanner(this);
         updateManager = new UpdateManager(this);
+
+        backupManager = new BackupManager(this);
+        backupManager.start();
 
         packetInjector = new PacketInjector(this);
         packetThrottler = new PacketThrottler(this);
@@ -85,16 +97,17 @@ public final class ChargedServerPlugin extends JavaPlugin {
             packetInjector.inject(online);
         }
 
-        boolean modrinth = getConfig().getBoolean("plugin-manager.modrinth-check", true);
+        boolean checkUpdates = getConfig().getBoolean("plugin-manager.check-on-startup",
+                getConfig().getBoolean("plugin-manager.modrinth-check", true));
         pluginScanner.scanNow()
-                .thenCompose(v -> modrinth ? pluginScanner.checkUpdates() : CompletableFuture.completedFuture(0))
+                .thenCompose(v -> checkUpdates ? pluginScanner.checkUpdates() : CompletableFuture.completedFuture(0))
                 .thenAccept(updates -> getLogger().info("Scanned " + pluginScanner.getPlugins().size()
                         + " plugins, " + updates + " update(s) available."));
 
         long intervalMs = getConfig().getLong("plugin-manager.scan-interval-seconds", 300) * 1000L;
         chargedScheduler.runAsyncRepeating(() -> {
             pluginScanner.scanBlocking();
-            if (modrinth) {
+            if (checkUpdates) {
                 pluginScanner.checkUpdatesBlocking();
             }
         }, intervalMs, intervalMs);
@@ -110,5 +123,22 @@ public final class ChargedServerPlugin extends JavaPlugin {
         if (databaseManager != null) databaseManager.close();
         ChargedAPI.shutdown();
         instance = null;
+    }
+
+    private void mergeDefaults() {
+        try (InputStreamReader reader = new InputStreamReader(
+                getResource("config.yml"), StandardCharsets.UTF_8)) {
+            YamlConfiguration defaults = YamlConfiguration.loadConfiguration(reader);
+            boolean changed = false;
+            for (String key : defaults.getKeys(true)) {
+                if (!defaults.isConfigurationSection(key) && !getConfig().contains(key)) {
+                    getConfig().set(key, defaults.get(key));
+                    changed = true;
+                }
+            }
+            if (changed) saveConfig();
+        } catch (Exception e) {
+            getLogger().warning("Could not merge default config values: " + e.getMessage());
+        }
     }
 }

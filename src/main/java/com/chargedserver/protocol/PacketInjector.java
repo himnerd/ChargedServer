@@ -6,6 +6,7 @@ import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.ChannelPromise;
+import io.netty.util.ReferenceCountUtil;
 import org.bukkit.entity.Player;
 
 import java.lang.reflect.Field;
@@ -37,11 +38,13 @@ public class PacketInjector {
     private final List<PacketListener> listeners = new CopyOnWriteArrayList<>();
     private final Map<UUID, Channel> channels = new ConcurrentHashMap<>();
     private final boolean enabled;
+    private final int maxReflectionDepth;
     private volatile boolean broken = false;
 
     public PacketInjector(ChargedServerPlugin plugin) {
         this.plugin = plugin;
         this.enabled = plugin.getConfig().getBoolean("protocol.enabled", true);
+        this.maxReflectionDepth = plugin.getConfig().getInt("protocol.max-reflection-depth", 4);
     }
 
     public void registerListener(PacketListener listener) {
@@ -100,7 +103,7 @@ public class PacketInjector {
     }
 
     private Channel findChannel(Object root, int depth, Set<Object> visited) throws IllegalAccessException {
-        if (root == null || depth > 4 || !visited.add(root)) {
+        if (root == null || depth > maxReflectionDepth || !visited.add(root)) {
             return null;
         }
         Class<?> clazz = root.getClass();
@@ -141,22 +144,31 @@ public class PacketInjector {
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-            for (PacketListener listener : listeners) {
-                if (!listener.onPacketSend(player, msg)) {
-                    // Complete the promise so upstream futures never hang on dropped packets.
-                    promise.trySuccess();
-                    return;
+            try {
+                for (PacketListener listener : listeners) {
+                    if (!listener.onPacketSend(player, msg)) {
+                        ReferenceCountUtil.release(msg);
+                        promise.trySuccess();
+                        return;
+                    }
                 }
+            } catch (Exception e) {
+                // Don't let a bad listener break the pipeline
             }
             super.write(ctx, msg, promise);
         }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            for (PacketListener listener : listeners) {
-                if (!listener.onPacketReceive(player, msg)) {
-                    return;
+            try {
+                for (PacketListener listener : listeners) {
+                    if (!listener.onPacketReceive(player, msg)) {
+                        ReferenceCountUtil.release(msg);
+                        return;
+                    }
                 }
+            } catch (Exception e) {
+                // Don't let a bad listener break the pipeline
             }
             super.channelRead(ctx, msg);
         }

@@ -6,7 +6,7 @@ description: Advanced plugin manager, optimization framework, protocol layer and
 commands:
   charged:
     description: ChargedServer main command
-    usage: /charged <manage|updateall|link|darkmode|status>
+    usage: /charged <manage|update|updateall|backup|link|darkmode|status>
     aliases: [cs, chargedserver]
 permissions:
   chargedserver.admin:
@@ -15,6 +15,8 @@ permissions:
     children:
       chargedserver.command.manage: true
       chargedserver.command.updateall: true
+      chargedserver.command.update: true
+      chargedserver.command.backup: true
       chargedserver.command.link: true
       chargedserver.command.darkmode: true
       chargedserver.command.status: true
@@ -22,6 +24,10 @@ permissions:
   chargedserver.command.manage:
     default: op
   chargedserver.command.updateall:
+    default: op
+  chargedserver.command.update:
+    default: op
+  chargedserver.command.backup:
     default: op
   chargedserver.command.link:
     default: op

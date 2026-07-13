@@ -1,47 +1,50 @@
 package com.chargedserver.theme;
 
+import com.chargedserver.ChargedServerPlugin;
 import com.cryptomorin.xseries.XMaterial;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-/**
- * GUI palettes. Every ManageGUI resolves its theme once at open time, so
- * toggling dark mode simply reopens the GUI with the other palette — no
- * per-slot conditional logic at click time.
- */
 public enum Theme {
 
     LIGHT("WHITE_STAINED_GLASS_PANE", "<gold>", "<gray>", "<yellow>"),
     DARK("BLACK_STAINED_GLASS_PANE", "<dark_gray>", "<gray>", "<gold>");
 
-    private final String fillerMaterial;
-    private final String primary;
-    private final String secondary;
-    private final String accent;
+    private final String defaultFiller;
+    private final String defaultPrimary;
+    private final String defaultSecondary;
+    private final String defaultAccent;
 
-    Theme(String fillerMaterial, String primary, String secondary, String accent) {
-        this.fillerMaterial = fillerMaterial;
-        this.primary = primary;
-        this.secondary = secondary;
-        this.accent = accent;
+    Theme(String filler, String primary, String secondary, String accent) {
+        this.defaultFiller = filler;
+        this.defaultPrimary = primary;
+        this.defaultSecondary = secondary;
+        this.defaultAccent = accent;
+    }
+
+    private String cfg(String key, String fallback) {
+        ChargedServerPlugin inst = ChargedServerPlugin.getInstance();
+        if (inst == null) return fallback;
+        return inst.getConfig().getString("theme." + name().toLowerCase() + "." + key, fallback);
     }
 
     public String primary() {
-        return primary;
+        return cfg("primary", defaultPrimary);
     }
 
     public String secondary() {
-        return secondary;
+        return cfg("secondary", defaultSecondary);
     }
 
     public String accent() {
-        return accent;
+        return cfg("accent", defaultAccent);
     }
 
     public ItemStack filler() {
-        ItemStack item = XMaterial.matchXMaterial(fillerMaterial)
+        String material = cfg("filler", defaultFiller);
+        ItemStack item = XMaterial.matchXMaterial(material)
                 .map(XMaterial::parseItem)
                 .orElseGet(() -> new ItemStack(Material.GLASS_PANE));
         ItemMeta meta = item.getItemMeta();

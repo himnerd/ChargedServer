@@ -1,4 +1,20 @@
+# ============================================================
+#  ChargedServer — Complete Configuration
+#  Every setting the plugin reads is listed here. New options
+#  added in updates are merged automatically on startup without
+#  touching your existing values.
+# ============================================================
+
+# ==================== General ====================
+general:
+  # Enable verbose debug logging to console
+  debug: false
+  # MiniMessage prefix prepended to chat messages
+  prefix: "<bold><gradient:gold:yellow>Charged</gradient></bold> <dark_gray>»</dark_gray> "
+
+# ==================== Storage ====================
 storage:
+  # Backend priority: MySQL → SQLite → YAML flat file (automatic fallback)
   mysql:
     enabled: false
     host: localhost
@@ -6,25 +22,270 @@ storage:
     database: charged
     username: root
     password: ""
+  sqlite:
+    # SQLite database file name (stored in plugins/ChargedServer/)
+    file: "charged.db"
+  # Prefix for all database table names (e.g. "cs_" → cs_players, cs_links)
+  table-prefix: "charged_"
 
+# ==================== Plugin Manager ====================
 plugin-manager:
-  # Seconds between automatic background scans of the plugins folder
+  # Seconds between automatic background plugin scans
   scan-interval-seconds: 300
-  # Query the Modrinth API for update checks (matched against the running server version)
-  modrinth-check: true
+  # Check for updates during server startup and periodic scans
+  check-on-startup: true
+  # Merge new config options from updated plugin jars into existing configs
+  # (never overwrites existing values, only adds missing keys)
+  config-merge-on-update: true
+  # Update source platforms — disable any you don't want queried
+  sources:
+    modrinth: true
+    hangar: true
+    spigotmc: true
+    github: true
+    geysermc: true
+    # Scrape the plugin's website field for .jar download links as a last resort
+    website-scrape: true
 
+# ==================== Server Updates ====================
+server-updates:
+  # Seconds to wait before shutting down after a server jar update
+  shutdown-delay-seconds: 5
+  # Skip the 'confirm' prompt for non-stable channels (EXPERIMENTAL / ALPHA / BETA)
+  allow-unstable: false
+
+# ==================== Backup ====================
+backup:
+  # Cloud provider: none, dropbox, googledrive, icloud
+  # Link in-game with /charged backup link <provider> <token-or-folder>
+  provider: none
+  # Dropbox/Google Drive: OAuth access token. iCloud: local folder path
+  credential: ""
+  # Hours between automatic backups (0 = disabled)
+  interval-hours: 0
+  # Maximum number of local backup archives to keep (0 = unlimited)
+  max-local-backups: 10
+  # Backup storage directory (relative to plugins/ChargedServer/)
+  directory: "backups"
+  # Timestamp format used in backup file names (Java DateTimeFormatter pattern)
+  timestamp-format: "yyyy-MM-dd_HH-mm-ss"
+  # Upload timeout in minutes for cloud providers
+  upload-timeout-minutes: 5
+  # Paths to exclude from backup zip (relative to the plugins/ folder)
+  exclude:
+    - "dynmap/"
+    - "BlueMap/"
+    - "Pl3xMap/"
+
+# ==================== Protocol (Packet Interception) ====================
 protocol:
   # Master switch for the Netty packet interception layer
   enabled: true
+  # Maximum reflection depth when searching for the player's Netty channel
+  max-reflection-depth: 4
   throttle:
     enabled: true
-    # Max entity move/rotate packets forwarded per player per 50ms window
-    max-move-packets-per-tick: 20
+    # Max entity move/rotate packets forwarded per player per window
+    max-move-packets-per-window: 20
+    # Throttle window duration in milliseconds
+    window-ms: 50
+    # Packet class-name fragments that are NEVER throttled (always forwarded)
+    # Add entries if a mod/plugin sends custom packets that get incorrectly dropped
+    whitelisted-packets:
+      - "Experience"
+      - "SetScore"
+      - "TakeItem"
+      - "Collect"
+      - "LevelUp"
+      - "SetHealth"
+      - "Attributes"
+      - "UpdateAttributes"
+      - "EntityEvent"
+      - "EntityStatus"
+      - "RemoveEntities"
+      - "RemoveMob"
+      - "Bundle"
+    # Packet class-name fragments that ARE throttled (subject to the per-window budget)
+    throttled-packets:
+      - "MoveEntity"
+      - "RotateHead"
 
+# ==================== Entity Culling ====================
 optimization:
   entity-culling:
     enabled: true
-    # Mobs farther than this from every player stop ticking their AI
+    # Mobs farther than this distance (blocks) from every online player stop ticking AI
     range: 48
-    # How often (in ticks) the culler re-evaluates entities
+    # How often (in server ticks) the culler re-evaluates all entities
+    # 20 ticks = 1 second. Default 100 = every 5 seconds
     interval-ticks: 100
+    # Bukkit EntityType names that are NEVER culled (always keep AI active)
+    exempt-types:
+      - "WARDEN"
+      - "ENDER_DRAGON"
+      - "WITHER"
+      - "ELDER_GUARDIAN"
+    # Worlds where entity culling is completely disabled
+    exempt-worlds: []
+
+# ==================== Scheduler ====================
+scheduler:
+  # Number of async worker threads (0 = auto: max(2, cpu_cores / 2))
+  async-threads: 0
+  # Seconds to wait for async tasks to finish on shutdown
+  shutdown-timeout-seconds: 3
+
+# ==================== GUI ====================
+gui:
+  # Plugin manager GUI title (MiniMessage). Placeholders: {page}, {total_pages}
+  manage-title: "<bold>Charged</bold> Plugin Manager ({page}/{total_pages})"
+  # Number of rows in the manage GUI (min 4, max 6)
+  manage-rows: 6
+
+# ==================== Theme ====================
+theme:
+  # Default theme for new players who haven't toggled: LIGHT or DARK
+  default: LIGHT
+  light:
+    # Filler glass pane material (XMaterial name)
+    filler: "WHITE_STAINED_GLASS_PANE"
+    # MiniMessage color tags used throughout GUIs and messages
+    primary: "<gold>"
+    secondary: "<gray>"
+    accent: "<yellow>"
+  dark:
+    filler: "BLACK_STAINED_GLASS_PANE"
+    primary: "<dark_gray>"
+    secondary: "<gray>"
+    accent: "<gold>"
+
+# ==================== HTTP ====================
+http:
+  # User-Agent header sent with all outbound HTTP requests
+  user-agent: "ChargedServer/1.0 (https://chargedserver.com)"
+  # Connection timeout in seconds
+  connect-timeout-seconds: 10
+  # Read timeout in seconds for API / metadata requests
+  api-timeout-seconds: 15
+  # Read timeout in minutes for large file downloads (plugin / server jars)
+  download-timeout-minutes: 2
+
+# ==================== Account Linking ====================
+account-linking:
+  # Enable the /charged link command and Bedrock–Java account linking
+  enabled: true
+  # Use FloodgateApi for XUID resolution when the Floodgate plugin is present
+  use-floodgate: true
+
+# ==================== Messages ====================
+# All player-facing text (MiniMessage format).
+# {prefix} is NOT auto-inserted — use Messages.prefixed() in code for that.
+messages:
+  # General
+  no-permission: "<red>No permission.</red>"
+  players-only: "<red>Only players can use this command.</red>"
+  unknown-subcommand: "<red>Unknown subcommand. Available: {subcommands}</red>"
+  plugin-info: "<gold>ChargedServer v{version}</gold> — use <gold>/charged <subcommand></gold>"
+
+  # Manage GUI
+  manage-players-only: "<red>Only players can open the GUI.</red>"
+
+  # Update commands
+  update-usage: "<red>Usage: /charged update <all | server <version>></red>"
+  update-server-usage: "<red>Usage: /charged update server <version></red>"
+  update-queued: "Queued <gold>{count}</gold> plugin update(s)."
+  update-already-queued: "<gold>{plugin}</gold> is already queued for update."
+  update-up-to-date: "<gold>{plugin}</gold> is up to date."
+  update-success: "Queued update for <gold>{plugin}</gold>. Applies on restart."
+  update-failed: "<red>Failed to download update for {plugin}.</red>"
+
+  # Server update
+  server-not-found: "<red>Paper {version} does not exist or has no builds yet.</red>"
+  server-scanning: "<yellow>Scanning plugin compatibility with {version}...</yellow>"
+  server-unstable-warning: "<red>Paper {version} is an unstable <bold>{channel}</bold> build and may corrupt worlds or break plugins!</red>"
+  server-incompatible-warning: "<red>These plugins have <bold>no release compatible with {version}</bold> and could crash the server if they run outdated:</red>"
+  server-unknown-warning: "<yellow>Could not verify (not found on any platform): {plugins}</yellow>"
+  server-update-held: "<yellow>Update held. Run <gold>/charged update server {version} confirm</gold> to proceed anyway.</yellow>"
+  server-backup-start: "<yellow>Creating backup before updating the server...</yellow>"
+  server-backup-failed: "<red>Backup failed — server update cancelled. Check the console.</red>"
+  server-downloading: "<yellow>Backup complete. Downloading Paper {version}...</yellow>"
+  server-download-failed: "<red>Could not download Paper {version}.</red>"
+  server-downloaded: "<green>Downloaded <yellow>{jar}</yellow> to the server folder.</green>"
+  server-complete: "<green>Queued {count} plugin update(s) for {version}. Stopping server in {delay}s — point your start script at <yellow>{jar}</yellow> and start it again.</green>"
+
+  # Backup commands
+  backup-usage: "<red>Usage: /charged backup <now | link <provider> <token-or-folder> | rate <hours>></red>"
+  backup-creating: "<yellow>Creating backup...</yellow>"
+  backup-complete-local: "<green>Backup complete (stored locally — link a cloud provider with /charged backup link).</green>"
+  backup-complete-cloud: "<green>Backup complete and uploaded to {provider}.</green>"
+  backup-failed: "<red>Backup failed — check the console.</red>"
+  backup-link-usage: "<red>Usage: /charged backup link <dropbox|googledrive|icloud> <token-or-folder></red>"
+  backup-link-help: "<gray>Dropbox/Google Drive: an OAuth access token. iCloud: the path to your locally synced iCloud Drive folder.</gray>"
+  backup-linked: "<green>Backups will now be sent to <yellow>{provider}</yellow>.</green>"
+  backup-unknown-provider: "<red>Unknown provider. Choose one of: {providers}</red>"
+  backup-rate-usage: "<red>Usage: /charged backup rate <hours> (0 = disabled)</red>"
+  backup-rate-invalid: "<red>'{input}' is not a number.</red>"
+  backup-rate-negative: "<red>Hours must be 0 or higher.</red>"
+  backup-rate-disabled: "<green>Automatic backups disabled.</green>"
+  backup-rate-set: "<green>Automatic backups will run every <yellow>{hours}</yellow> hour(s).</green>"
+
+  # Pre-update backup
+  update-backup-start: "<yellow>Creating backup before updating...</yellow>"
+  update-backup-failed: "<red>Backup failed — update cancelled. Check the console.</red>"
+  update-backup-complete: "<yellow>Backup complete. Checking for updates...</yellow>"
+  update-plugins-complete: "<green>Queued {count} plugin update(s). Applies on restart.</green>"
+
+  # Account linking
+  link-usage: "<red>Usage: /charged link <bedrock_name> <java_name></red>"
+  link-success: "<green>Accounts linked successfully.</green>"
+  link-failed: "<red>Failed to link accounts.</red>"
+  link-disabled: "<red>Account linking is disabled.</red>"
+
+  # Dark mode
+  darkmode-players-only: "<red>Only players can toggle dark mode.</red>"
+  darkmode-toggled: "<green>Dark mode toggled.</green>"
+
+  # Status
+  status-header: "<gold>=== ChargedServer Status ===</gold>"
+  status-tps: "<gray>TPS:</gray> <yellow>{value}</yellow>"
+  status-mspt: "<gray>MSPT:</gray> <yellow>{value}</yellow>"
+  status-memory: "<gray>Memory:</gray> <yellow>{used}/{max} MB</yellow>"
+  status-culled: "<gray>Culled entities:</gray> <yellow>{value}</yellow>"
+  status-throttled: "<gray>Throttled packets:</gray> <yellow>{value}</yellow>"
+
+  # GUI button labels
+  gui-status-title: "<bold>Server Status</bold>"
+  gui-status-tps: "TPS: "
+  gui-status-mspt: "MSPT: "
+  gui-status-memory: "Memory: "
+  gui-status-culled: "Culled entities: "
+  gui-status-throttled: "Throttled packets: "
+  gui-theme-title-dark: "<bold>Theme: Dark Mode</bold>"
+  gui-theme-title-light: "<bold>Theme: Light Mode</bold>"
+  gui-theme-switch-to-light: "Click to switch to Light Mode"
+  gui-theme-switch-to-dark: "Click to switch to Dark Mode"
+  gui-theme-saved: "Preference is saved to your profile"
+  gui-update-all-title: "<bold>Update All</bold>"
+  gui-update-all-lore-1: "Queues every available update."
+  gui-update-all-lore-2: "Updates apply on the next restart."
+  gui-refresh-title: "<bold>Rescan Plugins</bold>"
+  gui-refresh-lore-1: "Rescans the plugins folder and"
+  gui-refresh-lore-2: "re-checks for updates."
+  gui-page-previous: "<bold>Previous Page</bold>"
+  gui-page-next: "<bold>Next Page</bold>"
+  gui-page-label: "Go to page {page}"
+  gui-plugin-version: "Version: "
+  gui-plugin-update-queued: "<green>Update queued — applies on restart"
+  gui-plugin-latest: "Latest: "
+  gui-plugin-click-update: "<green>Click to queue the update"
+  gui-plugin-up-to-date: "Up to date"
+
+# ==================== Permissions (reference) ====================
+# Managed in plugin.yml and by your permissions plugin (LuckPerms etc.)
+# chargedserver.command.manage     — default: op
+# chargedserver.command.update     — default: op
+# chargedserver.command.updateall  — default: op
+# chargedserver.command.backup     — default: op
+# chargedserver.command.link       — default: op
+# chargedserver.command.darkmode   — default: true (all players)
+# chargedserver.command.status     — default: op

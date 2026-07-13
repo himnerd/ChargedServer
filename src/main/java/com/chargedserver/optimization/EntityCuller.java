@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -26,6 +27,8 @@ public class EntityCuller {
     private final Set<UUID> culled = ConcurrentHashMap.newKeySet();
     private BukkitTask task;
     private double rangeSquared;
+    private Set<String> exemptTypes;
+    private Set<String> exemptWorlds;
 
     public EntityCuller(ChargedServerPlugin plugin) {
         this.plugin = plugin;
@@ -37,12 +40,15 @@ public class EntityCuller {
         }
         double range = plugin.getConfig().getDouble("optimization.entity-culling.range", 48);
         this.rangeSquared = range * range;
+        this.exemptTypes = new HashSet<>(plugin.getConfig().getStringList("optimization.entity-culling.exempt-types"));
+        this.exemptWorlds = new HashSet<>(plugin.getConfig().getStringList("optimization.entity-culling.exempt-worlds"));
         long interval = plugin.getConfig().getLong("optimization.entity-culling.interval-ticks", 100);
         this.task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, interval, interval);
     }
 
     private void tick() {
         for (World world : Bukkit.getWorlds()) {
+            if (exemptWorlds.contains(world.getName())) continue;
             List<Player> players = world.getPlayers();
             if (players.isEmpty()) {
                 continue;
@@ -52,6 +58,7 @@ public class EntityCuller {
                 locations.add(player.getLocation());
             }
             for (Mob mob : world.getEntitiesByClass(Mob.class)) {
+                if (exemptTypes.contains(mob.getType().name())) continue;
                 Location mobLocation = mob.getLocation();
                 boolean near = false;
                 for (Location location : locations) {

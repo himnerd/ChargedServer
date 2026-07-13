@@ -30,7 +30,9 @@ public class ThemeManager {
     }
 
     public boolean isDark(UUID uuid) {
-        return darkMode.getOrDefault(uuid, false);
+        if (darkMode.containsKey(uuid)) return darkMode.get(uuid);
+        String def = plugin.getConfig().getString("theme.default", "LIGHT");
+        return "DARK".equalsIgnoreCase(def);
     }
 
     public Theme theme(UUID uuid) {
